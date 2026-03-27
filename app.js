@@ -248,6 +248,10 @@ function bindDragEvents(cfg) {
   const { el, xVar, yVar } = cfg;
   if (!el) return;
 
+  el.addEventListener("dragstart", (event) => {
+    event.preventDefault();
+  });
+
   el.addEventListener("pointerdown", (event) => {
     if (el.style.display === "none") return;
     event.preventDefault();
@@ -259,7 +263,9 @@ function bindDragEvents(cfg) {
     const initialY = parsePixelValue(computed.getPropertyValue(yVar));
 
     el.style.cursor = "grabbing";
-    el.setPointerCapture(event.pointerId);
+    if (typeof el.setPointerCapture === "function") {
+      el.setPointerCapture(event.pointerId);
+    }
 
     const onPointerMove = (moveEvent) => {
       const nextX = initialX + (moveEvent.clientX - startX);
@@ -269,7 +275,9 @@ function bindDragEvents(cfg) {
     };
 
     const onPointerUp = (upEvent) => {
-      el.releasePointerCapture(upEvent.pointerId);
+      if (typeof el.releasePointerCapture === "function" && el.hasPointerCapture(upEvent.pointerId)) {
+        el.releasePointerCapture(upEvent.pointerId);
+      }
       el.style.cursor = "grab";
       el.removeEventListener("pointermove", onPointerMove);
       el.removeEventListener("pointerup", onPointerUp);

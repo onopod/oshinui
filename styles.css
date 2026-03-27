@@ -112,24 +112,29 @@ body {
   width: 100%;
   transform: translate(-50%, -50%);
   image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .layer-wear {
   z-index: 20;
   transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y));
   cursor: grab;
+  touch-action: none;
 }
 
 .layer-hair {
   z-index: 30;
   transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y));
   cursor: grab;
+  touch-action: none;
 }
 
 .layer-face {
   z-index: 10;
   transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y));
   cursor: grab;
+  touch-action: none;
 }
 
 .layer-base {
