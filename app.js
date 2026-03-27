@@ -53,19 +53,19 @@ const state = {
   baseImagePath: "",
   offsets: {
     initial: {
-      hair: { x: "0px", y: "0px" },
-      face: { x: "0px", y: "0px" },
-      wear: { x: "0px", y: "0px" },
+      hair: { x: "0%", y: "0%" },
+      face: { x: "0%", y: "0%" },
+      wear: { x: "0%", y: "0%" },
     },
     front: {
-      hair: { x: "0px", y: "0px" },
-      face: { x: "0px", y: "0px" },
-      wear: { x: "0px", y: "0px" },
+      hair: { x: "0%", y: "0%" },
+      face: { x: "0%", y: "0%" },
+      wear: { x: "0%", y: "0%" },
     },
     back: {
-      hair: { x: "0px", y: "0px" },
-      face: { x: "0px", y: "0px" },
-      wear: { x: "0px", y: "0px" },
+      hair: { x: "0%", y: "0%" },
+      face: { x: "0%", y: "0%" },
+      wear: { x: "0%", y: "0%" },
     },
   },
 };
@@ -281,17 +281,23 @@ async function renderPreview() {
   await Promise.all(jobs);
 }
 
-function parsePixelValue(value) {
-  const parsed = Number.parseFloat(String(value || "").trim());
-  return Number.isFinite(parsed) ? parsed : 0;
+function parseOffsetValue(value) {
+  const text = String(value || "").trim();
+  const parsed = Number.parseFloat(text);
+  if (!Number.isFinite(parsed)) return 0;
+  return parsed;
+}
+
+function formatPercentValue(value) {
+  return `${value.toFixed(2).replace(/\.?0+$/, "")}%`;
 }
 
 function readInitialOffsets() {
   const computed = getComputedStyle(ui.previewStage);
   for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
     const initial = {
-      x: computed.getPropertyValue(cfg.xVar).trim() || "0px",
-      y: computed.getPropertyValue(cfg.yVar).trim() || "0px",
+      x: computed.getPropertyValue(cfg.xVar).trim() || "0%",
+      y: computed.getPropertyValue(cfg.yVar).trim() || "0%",
     };
     state.offsets.initial[category] = initial;
     state.offsets.front[category] = { ...initial };
@@ -331,8 +337,9 @@ function bindDragEvents(cfg) {
     const startX = event.clientX;
     const startY = event.clientY;
     const computed = getComputedStyle(ui.previewStage);
-    const initialX = parsePixelValue(computed.getPropertyValue(xVar));
-    const initialY = parsePixelValue(computed.getPropertyValue(yVar));
+    const stageRect = ui.previewStage.getBoundingClientRect();
+    const initialX = parseOffsetValue(computed.getPropertyValue(xVar));
+    const initialY = parseOffsetValue(computed.getPropertyValue(yVar));
 
     el.style.cursor = "grabbing";
     if (typeof el.setPointerCapture === "function") {
@@ -340,10 +347,10 @@ function bindDragEvents(cfg) {
     }
 
     const onPointerMove = (moveEvent) => {
-      const nextX = initialX + (moveEvent.clientX - startX);
-      const nextY = initialY + (moveEvent.clientY - startY);
-      const nextXText = `${nextX}px`;
-      const nextYText = `${nextY}px`;
+      const deltaXPercent = stageRect.width ? ((moveEvent.clientX - startX) / stageRect.width) * 100 : 0;
+      const deltaYPercent = stageRect.height ? ((moveEvent.clientY - startY) / stageRect.height) * 100 : 0;
+      const nextXText = formatPercentValue(initialX + deltaXPercent);
+      const nextYText = formatPercentValue(initialY + deltaYPercent);
       ui.previewStage.style.setProperty(xVar, nextXText);
       ui.previewStage.style.setProperty(yVar, nextYText);
       const category = X_VAR_TO_CATEGORY[xVar];
