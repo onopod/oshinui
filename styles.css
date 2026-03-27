@@ -48,6 +48,12 @@ body {
   gap: 12px;
 }
 
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .panel-header h1,
 .controls-panel h2 {
   margin: 0;
@@ -73,6 +79,20 @@ body {
   color: #fff;
 }
 
+.reset-button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.reset-button:hover {
+  background: #f6f8ff;
+}
+
 .preview-stage {
   position: relative;
   margin-top: 12px;
@@ -92,21 +112,29 @@ body {
   width: 100%;
   transform: translate(-50%, -50%);
   image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .layer-wear {
   z-index: 20;
   transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y));
+  cursor: grab;
+  touch-action: none;
 }
 
 .layer-hair {
   z-index: 30;
   transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y));
+  cursor: grab;
+  touch-action: none;
 }
 
 .layer-face {
   z-index: 10;
   transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y));
+  cursor: grab;
+  touch-action: none;
 }
 
 .layer-base {
@@ -155,5 +183,10 @@ body {
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }
