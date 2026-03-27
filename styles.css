@@ -95,17 +95,17 @@ body {
 }
 
 .layer-wear {
-  z-index: 2;
+  z-index: 20;
   transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y));
 }
 
 .layer-hair {
-  z-index: 3;
+  z-index: 30;
   transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y));
 }
 
 .layer-face {
-  z-index: 1;
+  z-index: 10;
   transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y));
 }
 
