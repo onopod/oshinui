@@ -14,6 +14,13 @@ const SELECT_IDS = {
 
 const IMAGE_EXT_CANDIDATES = [".png", ".PNG"];
 const IMAGE_BASE_DIR_CANDIDATES = ["images/output", "images"];
+const WHOLE_BODY_IMAGE_PATH = "images/output/wholebody.png";
+const WHOLE_BODY_FALLBACK_PATHS = [
+  WHOLE_BODY_IMAGE_PATH,
+  "images/output/wholebody.PNG",
+  "images/wholebody.png",
+  "images/wholebody.PNG",
+];
 const SLUG_FALLBACK_MAP = {
   short_brown: ["short_bronw"],
   tare_black: ["tare_brown"],
@@ -24,6 +31,7 @@ const state = {
   options: { hair: [], face: [], wear: [] },
   selected: { hair: "", face: "", wear: "" },
   srcCache: new Map(),
+  baseImagePath: "",
 };
 
 const ui = {
@@ -34,6 +42,7 @@ const ui = {
   hairSelect: document.getElementById("hairSelect"),
   faceSelect: document.getElementById("faceSelect"),
   wearSelect: document.getElementById("wearSelect"),
+  baseLayer: document.getElementById("baseLayer"),
   hairLayer: document.getElementById("hairLayer"),
   faceLayer: document.getElementById("faceLayer"),
   wearLayer: document.getElementById("wearLayer"),
@@ -160,8 +169,27 @@ async function setLayerImage(layerEl, category, slug) {
   }
 }
 
+async function resolveWholeBodyPath() {
+  if (state.baseImagePath) return state.baseImagePath;
+
+  for (const path of WHOLE_BODY_FALLBACK_PATHS) {
+    try {
+      const res = await fetch(path, { method: "HEAD" });
+      if (res.ok) {
+        state.baseImagePath = path;
+        return path;
+      }
+    } catch (_err) {
+      // ignore
+    }
+  }
+  return WHOLE_BODY_IMAGE_PATH;
+}
+
 async function renderPreview() {
   ui.previewStage.dataset.view = state.view;
+  ui.baseLayer.src = await resolveWholeBodyPath();
+  ui.baseLayer.style.display = "block";
 
   const jobs = [
     setLayerImage(ui.wearLayer, "wear", state.selected.wear),
