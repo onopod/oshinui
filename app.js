@@ -32,11 +32,17 @@ const state = {
   selected: { hair: "", face: "", wear: "" },
   srcCache: new Map(),
   baseImagePath: "",
+  offsets: {
+    hair: { x: "0px", y: "0px" },
+    face: { x: "0px", y: "0px" },
+    wear: { x: "0px", y: "0px" },
+  },
 };
 
 const ui = {
   frontButton: document.getElementById("frontButton"),
   backButton: document.getElementById("backButton"),
+  resetPositionButton: document.getElementById("resetPositionButton"),
   previewStage: document.getElementById("previewStage"),
   previewMessage: document.getElementById("previewMessage"),
   hairSelect: document.getElementById("hairSelect"),
@@ -46,6 +52,12 @@ const ui = {
   hairLayer: document.getElementById("hairLayer"),
   faceLayer: document.getElementById("faceLayer"),
   wearLayer: document.getElementById("wearLayer"),
+};
+
+const DRAGGABLE_LAYERS = {
+  hair: { el: ui.hairLayer, xVar: "--hair-offset-x", yVar: "--hair-offset-y" },
+  face: { el: ui.faceLayer, xVar: "--face-offset-x", yVar: "--face-offset-y" },
+  wear: { el: ui.wearLayer, xVar: "--wear-offset-x", yVar: "--wear-offset-y" },
 };
 
 function normalizeCategory(value) {
@@ -209,6 +221,67 @@ async function renderPreview() {
   await Promise.all(jobs);
 }
 
+function parsePixelValue(value) {
+  const parsed = Number.parseFloat(String(value || "").trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readInitialOffsets() {
+  const computed = getComputedStyle(ui.previewStage);
+  for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
+    state.offsets[category] = {
+      x: computed.getPropertyValue(cfg.xVar).trim() || "0px",
+      y: computed.getPropertyValue(cfg.yVar).trim() || "0px",
+    };
+  }
+}
+
+function resetOffsets() {
+  for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
+    const offset = state.offsets[category];
+    ui.previewStage.style.setProperty(cfg.xVar, offset.x);
+    ui.previewStage.style.setProperty(cfg.yVar, offset.y);
+  }
+}
+
+function bindDragEvents(cfg) {
+  const { el, xVar, yVar } = cfg;
+  if (!el) return;
+
+  el.addEventListener("pointerdown", (event) => {
+    if (el.style.display === "none") return;
+    event.preventDefault();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const computed = getComputedStyle(ui.previewStage);
+    const initialX = parsePixelValue(computed.getPropertyValue(xVar));
+    const initialY = parsePixelValue(computed.getPropertyValue(yVar));
+
+    el.style.cursor = "grabbing";
+    el.setPointerCapture(event.pointerId);
+
+    const onPointerMove = (moveEvent) => {
+      const nextX = initialX + (moveEvent.clientX - startX);
+      const nextY = initialY + (moveEvent.clientY - startY);
+      ui.previewStage.style.setProperty(xVar, `${nextX}px`);
+      ui.previewStage.style.setProperty(yVar, `${nextY}px`);
+    };
+
+    const onPointerUp = (upEvent) => {
+      el.releasePointerCapture(upEvent.pointerId);
+      el.style.cursor = "grab";
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("pointercancel", onPointerUp);
+  });
+}
+
 function bindEvents() {
   for (const [view, button] of [
     ["front", ui.frontButton],
@@ -229,6 +302,14 @@ function bindEvents() {
       await renderPreview();
     });
   }
+
+  for (const cfg of Object.values(DRAGGABLE_LAYERS)) {
+    bindDragEvents(cfg);
+  }
+
+  ui.resetPositionButton.addEventListener("click", () => {
+    resetOffsets();
+  });
 }
 
 async function init() {
@@ -239,6 +320,8 @@ async function init() {
     fillSelect(ui.faceSelect, state.options.face, "face");
     fillSelect(ui.wearSelect, state.options.wear, "wear");
 
+    readInitialOffsets();
+    resetOffsets();
     bindEvents();
     await renderPreview();
   } catch (error) {
