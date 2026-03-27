@@ -43,7 +43,7 @@ const LOCAL_FALLBACK_OPTIONS = {
     { name: "アイドル衣装", color: "グリーン", slug: "idol_green" },
   ],
 };
-const IS_FILE_PROTOCOL = window.location.protocol === "file:";
+const IS_FILE_PROTOCOL = window.location.protocol === "file:" || window.location.origin === "null";
 
 const state = {
   view: "front",
@@ -141,22 +141,27 @@ async function loadOptionsFromXlsx() {
     return LOCAL_FALLBACK_OPTIONS;
   }
 
-  const response = await fetch(XLSX_FILE_PATH);
-  if (!response.ok) {
-    throw new Error(`xlsxの取得に失敗: ${response.status}`);
-  }
+  try {
+    const response = await fetch(XLSX_FILE_PATH);
+    if (!response.ok) {
+      throw new Error(`xlsxの取得に失敗: ${response.status}`);
+    }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+    const arrayBuffer = await response.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
 
-  const parsed = parseWorkbookRows(rows);
-  if (!parsed.hair.length || !parsed.face.length || !parsed.wear.length) {
-    throw new Error("xlsxから必要なパーツ情報を読み取れませんでした");
+    const parsed = parseWorkbookRows(rows);
+    if (!parsed.hair.length || !parsed.face.length || !parsed.wear.length) {
+      throw new Error("xlsxから必要なパーツ情報を読み取れませんでした");
+    }
+    return parsed;
+  } catch (_error) {
+    ui.previewMessage.textContent = "ローカルフォールバックのパーツ候補を使用します。";
+    return LOCAL_FALLBACK_OPTIONS;
   }
-  return parsed;
 }
 
 function toPathCandidates(category, view, slug) {
