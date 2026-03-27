@@ -1,0 +1,159 @@
+:root {
+  --bg: #f5f7fb;
+  --panel: #fff;
+  --border: #d8deed;
+  --text: #1f2a44;
+  --accent: #4466dd;
+
+  /* 後で位置調整しやすいようにパーツごとに分離 */
+  --stage-size: 512px;
+  --wear-offset-x: 0px;
+  --wear-offset-y: 0px;
+  --hair-offset-x: 0px;
+  --hair-offset-y: 0px;
+  --face-offset-x: 0px;
+  --face-offset-y: 0px;
+  --base-offset-x: 0px;
+  --base-offset-y: 0px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-header h1,
+.controls-panel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.view-toggle button {
+  border: 0;
+  background: #fff;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.view-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.preview-stage {
+  position: relative;
+  margin-top: 12px;
+  width: min(100%, var(--stage-size));
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8faff, #eef3ff);
+  overflow: hidden;
+}
+
+.layer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  transform: translate(-50%, -50%);
+  image-rendering: auto;
+}
+
+.layer-wear {
+  z-index: 2;
+  transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y));
+}
+
+.layer-hair {
+  z-index: 3;
+  transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y));
+}
+
+.layer-face {
+  z-index: 1;
+  transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y));
+}
+
+.layer-base {
+  z-index: 0;
+  transform: translate(-50%, -50%) translate(var(--base-offset-x), var(--base-offset-y));
+}
+
+.preview-message {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #47526f;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.hint {
+  margin-top: auto;
+  font-size: 0.9rem;
+  color: #56607a;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

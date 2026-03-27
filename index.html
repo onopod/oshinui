@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>推しぬいワッペンデザイナー</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="layout">
+      <section class="panel preview-panel" aria-label="デザイン表示パネル">
+        <div class="panel-header">
+          <h1>推しぬいワッペンデザイナー</h1>
+          <div class="view-toggle" role="group" aria-label="表示向きの切り替え">
+            <button id="frontButton" class="active" data-view="front" type="button">前面</button>
+            <button id="backButton" data-view="back" type="button">背面</button>
+          </div>
+        </div>
+
+        <div class="preview-stage" id="previewStage" data-view="front">
+          <img id="baseLayer" class="layer layer-base" alt="ベース画像" />
+          <img id="wearLayer" class="layer layer-wear" alt="服パーツ" />
+          <img id="hairLayer" class="layer layer-hair" alt="髪パーツ" />
+          <img id="faceLayer" class="layer layer-face" alt="顔パーツ" />
+          <p id="previewMessage" class="preview-message"></p>
+        </div>
+      </section>
+
+      <section class="panel controls-panel" aria-label="パーツ選択パネル">
+        <h2>パーツ選択</h2>
+
+        <label class="field">
+          <span>髪パーツ</span>
+          <select id="hairSelect"></select>
+        </label>
+
+        <label class="field">
+          <span>顔パーツ</span>
+          <select id="faceSelect"></select>
+        </label>
+
+        <label class="field">
+          <span>服パーツ</span>
+          <select id="wearSelect"></select>
+        </label>
+
+        <p class="hint">※ 背面表示時は顔パーツを非表示にします。</p>
+      </section>
+    </main>
+
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
