@@ -6,17 +6,15 @@
   --accent: #4466dd;
 
   /* 後で位置調整しやすいようにパーツごとに分離 */
-  --wear-top: 35%;
-  --wear-left: 50%;
-  --wear-width: 52%;
-
-  --hair-top: 23%;
-  --hair-left: 50%;
-  --hair-width: 60%;
-
-  --face-top: 38%;
-  --face-left: 50%;
-  --face-width: 24%;
+  --stage-size: 512px;
+  --wear-offset-x: 0px;
+  --wear-offset-y: 0px;
+  --hair-offset-x: 0px;
+  --hair-offset-y: 0px;
+  --face-offset-x: 0px;
+  --face-offset-y: 0px;
+  --base-offset-x: 0px;
+  --base-offset-y: 0px;
 }
 
 * { box-sizing: border-box; }
@@ -50,6 +48,12 @@ body {
   gap: 12px;
 }
 
+.header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .panel-header h1,
 .controls-panel h2 {
   margin: 0;
@@ -75,10 +79,25 @@ body {
   color: #fff;
 }
 
+.reset-button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.88rem;
+}
+
+.reset-button:hover {
+  background: #f6f8ff;
+}
+
 .preview-stage {
   position: relative;
   margin-top: 12px;
-  width: 100%;
+  width: min(100%, var(--stage-size));
+  margin-inline: auto;
   aspect-ratio: 1 / 1;
   border: 1px dashed var(--border);
   border-radius: 12px;
@@ -88,29 +107,39 @@ body {
 
 .layer {
   position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
   transform: translate(-50%, -50%);
   image-rendering: auto;
+  user-select: none;
+  -webkit-user-drag: none;
 }
 
 .layer-wear {
-  top: var(--wear-top);
-  left: var(--wear-left);
-  width: var(--wear-width);
-  z-index: 1;
+  z-index: 20;
+  transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y));
+  cursor: grab;
+  touch-action: none;
 }
 
 .layer-hair {
-  top: var(--hair-top);
-  left: var(--hair-left);
-  width: var(--hair-width);
-  z-index: 2;
+  z-index: 30;
+  transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y));
+  cursor: grab;
+  touch-action: none;
 }
 
 .layer-face {
-  top: var(--face-top);
-  left: var(--face-left);
-  width: var(--face-width);
-  z-index: 3;
+  z-index: 10;
+  transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y));
+  cursor: grab;
+  touch-action: none;
+}
+
+.layer-base {
+  z-index: 0;
+  transform: translate(-50%, -50%) translate(var(--base-offset-x), var(--base-offset-y));
 }
 
 .preview-message {
@@ -154,5 +183,10 @@ body {
 @media (max-width: 900px) {
   .layout {
     grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 }

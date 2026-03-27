@@ -14,6 +14,13 @@ const SELECT_IDS = {
 
 const IMAGE_EXT_CANDIDATES = [".png", ".PNG"];
 const IMAGE_BASE_DIR_CANDIDATES = ["images/output", "images"];
+const WHOLE_BODY_IMAGE_PATH = "images/output/wholebody.png";
+const WHOLE_BODY_FALLBACK_PATHS = [
+  WHOLE_BODY_IMAGE_PATH,
+  "images/output/wholebody.PNG",
+  "images/wholebody.png",
+  "images/wholebody.PNG",
+];
 const SLUG_FALLBACK_MAP = {
   short_brown: ["short_bronw"],
   tare_black: ["tare_brown"],
@@ -24,19 +31,33 @@ const state = {
   options: { hair: [], face: [], wear: [] },
   selected: { hair: "", face: "", wear: "" },
   srcCache: new Map(),
+  baseImagePath: "",
+  offsets: {
+    hair: { x: "0px", y: "0px" },
+    face: { x: "0px", y: "0px" },
+    wear: { x: "0px", y: "0px" },
+  },
 };
 
 const ui = {
   frontButton: document.getElementById("frontButton"),
   backButton: document.getElementById("backButton"),
+  resetPositionButton: document.getElementById("resetPositionButton"),
   previewStage: document.getElementById("previewStage"),
   previewMessage: document.getElementById("previewMessage"),
   hairSelect: document.getElementById("hairSelect"),
   faceSelect: document.getElementById("faceSelect"),
   wearSelect: document.getElementById("wearSelect"),
+  baseLayer: document.getElementById("baseLayer"),
   hairLayer: document.getElementById("hairLayer"),
   faceLayer: document.getElementById("faceLayer"),
   wearLayer: document.getElementById("wearLayer"),
+};
+
+const DRAGGABLE_LAYERS = {
+  hair: { el: ui.hairLayer, xVar: "--hair-offset-x", yVar: "--hair-offset-y" },
+  face: { el: ui.faceLayer, xVar: "--face-offset-x", yVar: "--face-offset-y" },
+  wear: { el: ui.wearLayer, xVar: "--wear-offset-x", yVar: "--wear-offset-y" },
 };
 
 function normalizeCategory(value) {
@@ -160,8 +181,27 @@ async function setLayerImage(layerEl, category, slug) {
   }
 }
 
+async function resolveWholeBodyPath() {
+  if (state.baseImagePath) return state.baseImagePath;
+
+  for (const path of WHOLE_BODY_FALLBACK_PATHS) {
+    try {
+      const res = await fetch(path, { method: "HEAD" });
+      if (res.ok) {
+        state.baseImagePath = path;
+        return path;
+      }
+    } catch (_err) {
+      // ignore
+    }
+  }
+  return WHOLE_BODY_IMAGE_PATH;
+}
+
 async function renderPreview() {
   ui.previewStage.dataset.view = state.view;
+  ui.baseLayer.src = await resolveWholeBodyPath();
+  ui.baseLayer.style.display = "block";
 
   const jobs = [
     setLayerImage(ui.wearLayer, "wear", state.selected.wear),
@@ -179,6 +219,75 @@ async function renderPreview() {
   }
 
   await Promise.all(jobs);
+}
+
+function parsePixelValue(value) {
+  const parsed = Number.parseFloat(String(value || "").trim());
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function readInitialOffsets() {
+  const computed = getComputedStyle(ui.previewStage);
+  for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
+    state.offsets[category] = {
+      x: computed.getPropertyValue(cfg.xVar).trim() || "0px",
+      y: computed.getPropertyValue(cfg.yVar).trim() || "0px",
+    };
+  }
+}
+
+function resetOffsets() {
+  for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
+    const offset = state.offsets[category];
+    ui.previewStage.style.setProperty(cfg.xVar, offset.x);
+    ui.previewStage.style.setProperty(cfg.yVar, offset.y);
+  }
+}
+
+function bindDragEvents(cfg) {
+  const { el, xVar, yVar } = cfg;
+  if (!el) return;
+
+  el.addEventListener("dragstart", (event) => {
+    event.preventDefault();
+  });
+
+  el.addEventListener("pointerdown", (event) => {
+    if (el.style.display === "none") return;
+    event.preventDefault();
+
+    const startX = event.clientX;
+    const startY = event.clientY;
+    const computed = getComputedStyle(ui.previewStage);
+    const initialX = parsePixelValue(computed.getPropertyValue(xVar));
+    const initialY = parsePixelValue(computed.getPropertyValue(yVar));
+
+    el.style.cursor = "grabbing";
+    if (typeof el.setPointerCapture === "function") {
+      el.setPointerCapture(event.pointerId);
+    }
+
+    const onPointerMove = (moveEvent) => {
+      const nextX = initialX + (moveEvent.clientX - startX);
+      const nextY = initialY + (moveEvent.clientY - startY);
+      ui.previewStage.style.setProperty(xVar, `${nextX}px`);
+      ui.previewStage.style.setProperty(yVar, `${nextY}px`);
+    };
+
+    const onPointerUp = (upEvent) => {
+      if (typeof el.releasePointerCapture === "function" && el.hasPointerCapture(upEvent.pointerId)) {
+        el.releasePointerCapture(upEvent.pointerId);
+      }
+      el.style.cursor = "grab";
+      el.removeEventListener("pointermove", onPointerMove);
+      el.removeEventListener("pointerup", onPointerUp);
+      el.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    el.addEventListener("pointermove", onPointerMove);
+    el.addEventListener("pointerup", onPointerUp);
+    el.addEventListener("pointercancel", onPointerUp);
+  });
 }
 
 function bindEvents() {
@@ -201,6 +310,14 @@ function bindEvents() {
       await renderPreview();
     });
   }
+
+  for (const cfg of Object.values(DRAGGABLE_LAYERS)) {
+    bindDragEvents(cfg);
+  }
+
+  ui.resetPositionButton.addEventListener("click", () => {
+    resetOffsets();
+  });
 }
 
 async function init() {
@@ -211,6 +328,8 @@ async function init() {
     fillSelect(ui.faceSelect, state.options.face, "face");
     fillSelect(ui.wearSelect, state.options.wear, "wear");
 
+    readInitialOffsets();
+    resetOffsets();
     bindEvents();
     await renderPreview();
   } catch (error) {
