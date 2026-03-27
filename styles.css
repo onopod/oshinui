@@ -1,0 +1,158 @@
+:root {
+  --bg: #f5f7fb;
+  --panel: #fff;
+  --border: #d8deed;
+  --text: #1f2a44;
+  --accent: #4466dd;
+
+  /* 後で位置調整しやすいようにパーツごとに分離 */
+  --wear-top: 35%;
+  --wear-left: 50%;
+  --wear-width: 52%;
+
+  --hair-top: 23%;
+  --hair-left: 50%;
+  --hair-width: 60%;
+
+  --face-top: 38%;
+  --face-left: 50%;
+  --face-width: 24%;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+.layout {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 16px;
+  padding: 16px;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.panel-header h1,
+.controls-panel h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.view-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.view-toggle button {
+  border: 0;
+  background: #fff;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.view-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.preview-stage {
+  position: relative;
+  margin-top: 12px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #f8faff, #eef3ff);
+  overflow: hidden;
+}
+
+.layer {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  image-rendering: auto;
+}
+
+.layer-wear {
+  top: var(--wear-top);
+  left: var(--wear-left);
+  width: var(--wear-width);
+  z-index: 1;
+}
+
+.layer-hair {
+  top: var(--hair-top);
+  left: var(--hair-left);
+  width: var(--hair-width);
+  z-index: 2;
+}
+
+.layer-face {
+  top: var(--face-top);
+  left: var(--face-left);
+  width: var(--face-width);
+  z-index: 3;
+}
+
+.preview-message {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #47526f;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.controls-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 1rem;
+  background: #fff;
+}
+
+.hint {
+  margin-top: auto;
+  font-size: 0.9rem;
+  color: #56607a;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
