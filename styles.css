@@ -7,14 +7,19 @@
 
   /* 後で位置調整しやすいようにパーツごとに分離 */
   --stage-size: 512px;
+  /* 各パーツの表示倍率（1 = 元サイズ） */
   --wear-offset-x: 0px;
   --wear-offset-y: 0px;
+  --wear-scale: 0.86;
   --hair-offset-x: 0px;
   --hair-offset-y: 0px;
+  --hair-scale: 0.86;
   --face-offset-x: 0px;
   --face-offset-y: 0px;
+  --face-scale: 0.86;
   --base-offset-x: 0px;
   --base-offset-y: 0px;
+  --base-scale: 0.86;
 }
 
 * { box-sizing: border-box; }
@@ -118,28 +123,28 @@ body {
 
 .layer-wear {
   z-index: 20;
-  transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y));
+  transform: translate(-50%, -50%) translate(var(--wear-offset-x), var(--wear-offset-y)) scale(var(--wear-scale));
   cursor: grab;
   touch-action: none;
 }
 
 .layer-hair {
   z-index: 30;
-  transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y));
+  transform: translate(-50%, -50%) translate(var(--hair-offset-x), var(--hair-offset-y)) scale(var(--hair-scale));
   cursor: grab;
   touch-action: none;
 }
 
 .layer-face {
   z-index: 10;
-  transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y));
+  transform: translate(-50%, -50%) translate(var(--face-offset-x), var(--face-offset-y)) scale(var(--face-scale));
   cursor: grab;
   touch-action: none;
 }
 
 .layer-base {
   z-index: 0;
-  transform: translate(-50%, -50%) translate(var(--base-offset-x), var(--base-offset-y));
+  transform: translate(-50%, -50%) translate(var(--base-offset-x), var(--base-offset-y)) scale(var(--base-scale));
 }
 
 .preview-message {
