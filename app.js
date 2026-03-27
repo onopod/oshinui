@@ -13,6 +13,7 @@ const SELECT_IDS = {
 };
 
 const IMAGE_EXT_CANDIDATES = [".png", ".PNG"];
+const IMAGE_BASE_DIR_CANDIDATES = ["images/output", "images"];
 const SLUG_FALLBACK_MAP = {
   short_brown: ["short_bronw"],
   tare_black: ["tare_brown"],
@@ -125,17 +126,19 @@ async function chooseExistingPath(category, view, slug) {
   if (state.srcCache.has(cacheKey)) return state.srcCache.get(cacheKey);
 
   const slugCandidates = getSlugCandidates(slug);
-  for (const candidateSlug of slugCandidates) {
-    for (const ext of IMAGE_EXT_CANDIDATES) {
-      const path = `images/${category}/${view}/${candidateSlug}${ext}`;
-      try {
-        const res = await fetch(path, { method: "HEAD" });
-        if (res.ok) {
-          state.srcCache.set(cacheKey, path);
-          return path;
+  for (const baseDir of IMAGE_BASE_DIR_CANDIDATES) {
+    for (const candidateSlug of slugCandidates) {
+      for (const ext of IMAGE_EXT_CANDIDATES) {
+        const path = `${baseDir}/${category}/${view}/${candidateSlug}${ext}`;
+        try {
+          const res = await fetch(path, { method: "HEAD" });
+          if (res.ok) {
+            state.srcCache.set(cacheKey, path);
+            return path;
+          }
+        } catch (_err) {
+          // ignore
         }
-      } catch (_err) {
-        // ignore
       }
     }
   }
