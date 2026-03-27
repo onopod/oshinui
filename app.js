@@ -25,6 +25,25 @@ const SLUG_FALLBACK_MAP = {
   short_brown: ["short_bronw"],
   tare_black: ["tare_brown"],
 };
+const LOCAL_FALLBACK_OPTIONS = {
+  hair: [
+    { name: "センターパート", color: "ブラック", slug: "centerpart_black" },
+    { name: "センターパート", color: "ブラウン", slug: "centerpart_brown" },
+    { name: "ショート", color: "ブラック", slug: "short_black" },
+    { name: "ショート", color: "ブラウン", slug: "short_brown" },
+  ],
+  face: [
+    { name: "じと目", color: "ブラック", slug: "jito_black" },
+    { name: "じと目", color: "ブラウン", slug: "jito_brown" },
+    { name: "たれ目", color: "グレー", slug: "tare_gray" },
+    { name: "たれ目", color: "ブラウン", slug: "tare_brown" },
+  ],
+  wear: [
+    { name: "アイドル衣装", color: "ブルー", slug: "idol_blue" },
+    { name: "アイドル衣装", color: "グリーン", slug: "idol_green" },
+  ],
+};
+const IS_FILE_PROTOCOL = window.location.protocol === "file:" || window.location.origin === "null";
 
 const state = {
   view: "front",
@@ -33,9 +52,21 @@ const state = {
   srcCache: new Map(),
   baseImagePath: "",
   offsets: {
-    hair: { x: "0px", y: "0px" },
-    face: { x: "0px", y: "0px" },
-    wear: { x: "0px", y: "0px" },
+    initial: {
+      hair: { x: "0px", y: "0px" },
+      face: { x: "0px", y: "0px" },
+      wear: { x: "0px", y: "0px" },
+    },
+    front: {
+      hair: { x: "0px", y: "0px" },
+      face: { x: "0px", y: "0px" },
+      wear: { x: "0px", y: "0px" },
+    },
+    back: {
+      hair: { x: "0px", y: "0px" },
+      face: { x: "0px", y: "0px" },
+      wear: { x: "0px", y: "0px" },
+    },
   },
 };
 
@@ -59,6 +90,9 @@ const DRAGGABLE_LAYERS = {
   face: { el: ui.faceLayer, xVar: "--face-offset-x", yVar: "--face-offset-y" },
   wear: { el: ui.wearLayer, xVar: "--wear-offset-x", yVar: "--wear-offset-y" },
 };
+const X_VAR_TO_CATEGORY = Object.fromEntries(
+  Object.entries(DRAGGABLE_LAYERS).map(([category, cfg]) => [cfg.xVar, category]),
+);
 
 function normalizeCategory(value) {
   if (!value) return null;
@@ -103,22 +137,53 @@ function parseWorkbookRows(rows) {
 }
 
 async function loadOptionsFromXlsx() {
-  const response = await fetch(XLSX_FILE_PATH);
-  if (!response.ok) {
-    throw new Error(`xlsxの取得に失敗: ${response.status}`);
+  if (IS_FILE_PROTOCOL) {
+    return LOCAL_FALLBACK_OPTIONS;
   }
 
-  const arrayBuffer = await response.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: "array" });
-  const firstSheetName = workbook.SheetNames[0];
-  const worksheet = workbook.Sheets[firstSheetName];
-  const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+  try {
+    const response = await fetch(XLSX_FILE_PATH);
+    if (!response.ok) {
+      throw new Error(`xlsxの取得に失敗: ${response.status}`);
+    }
 
-  const parsed = parseWorkbookRows(rows);
-  if (!parsed.hair.length || !parsed.face.length || !parsed.wear.length) {
-    throw new Error("xlsxから必要なパーツ情報を読み取れませんでした");
+    const arrayBuffer = await response.arrayBuffer();
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
+    const firstSheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[firstSheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+
+    const parsed = parseWorkbookRows(rows);
+    if (!parsed.hair.length || !parsed.face.length || !parsed.wear.length) {
+      throw new Error("xlsxから必要なパーツ情報を読み取れませんでした");
+    }
+    return parsed;
+  } catch (_error) {
+    ui.previewMessage.textContent = "ローカルフォールバックのパーツ候補を使用します。";
+    return LOCAL_FALLBACK_OPTIONS;
   }
-  return parsed;
+}
+
+function toPathCandidates(category, view, slug) {
+  const slugCandidates = getSlugCandidates(slug);
+  const candidates = [];
+  for (const baseDir of IMAGE_BASE_DIR_CANDIDATES) {
+    for (const candidateSlug of slugCandidates) {
+      for (const ext of IMAGE_EXT_CANDIDATES) {
+        candidates.push(`${baseDir}/${category}/${view}/${candidateSlug}${ext}`);
+      }
+    }
+  }
+  return candidates;
+}
+
+function loadImagePath(path) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(true);
+    img.onerror = () => resolve(false);
+    img.src = path;
+  });
 }
 
 function fillSelect(selectEl, items, category) {
@@ -146,21 +211,16 @@ async function chooseExistingPath(category, view, slug) {
   const cacheKey = `${category}:${view}:${slug}`;
   if (state.srcCache.has(cacheKey)) return state.srcCache.get(cacheKey);
 
-  const slugCandidates = getSlugCandidates(slug);
-  for (const baseDir of IMAGE_BASE_DIR_CANDIDATES) {
-    for (const candidateSlug of slugCandidates) {
-      for (const ext of IMAGE_EXT_CANDIDATES) {
-        const path = `${baseDir}/${category}/${view}/${candidateSlug}${ext}`;
-        try {
-          const res = await fetch(path, { method: "HEAD" });
-          if (res.ok) {
-            state.srcCache.set(cacheKey, path);
-            return path;
-          }
-        } catch (_err) {
-          // ignore
-        }
-      }
+  const candidates = toPathCandidates(category, view, slug);
+  for (const path of candidates) {
+    if (IS_FILE_PROTOCOL) {
+      state.srcCache.set(cacheKey, path);
+      return path;
+    }
+
+    if (await loadImagePath(path)) {
+      state.srcCache.set(cacheKey, path);
+      return path;
     }
   }
 
@@ -185,14 +245,14 @@ async function resolveWholeBodyPath() {
   if (state.baseImagePath) return state.baseImagePath;
 
   for (const path of WHOLE_BODY_FALLBACK_PATHS) {
-    try {
-      const res = await fetch(path, { method: "HEAD" });
-      if (res.ok) {
-        state.baseImagePath = path;
-        return path;
-      }
-    } catch (_err) {
-      // ignore
+    if (IS_FILE_PROTOCOL) {
+      state.baseImagePath = path;
+      return path;
+    }
+
+    if (await loadImagePath(path)) {
+      state.baseImagePath = path;
+      return path;
     }
   }
   return WHOLE_BODY_IMAGE_PATH;
@@ -229,16 +289,28 @@ function parsePixelValue(value) {
 function readInitialOffsets() {
   const computed = getComputedStyle(ui.previewStage);
   for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
-    state.offsets[category] = {
+    const initial = {
       x: computed.getPropertyValue(cfg.xVar).trim() || "0px",
       y: computed.getPropertyValue(cfg.yVar).trim() || "0px",
     };
+    state.offsets.initial[category] = initial;
+    state.offsets.front[category] = { ...initial };
+    state.offsets.back[category] = { ...initial };
+  }
+}
+
+function applyOffsetsForView(view) {
+  for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
+    const offset = state.offsets[view][category];
+    ui.previewStage.style.setProperty(cfg.xVar, offset.x);
+    ui.previewStage.style.setProperty(cfg.yVar, offset.y);
   }
 }
 
 function resetOffsets() {
   for (const [category, cfg] of Object.entries(DRAGGABLE_LAYERS)) {
-    const offset = state.offsets[category];
+    const offset = state.offsets.initial[category];
+    state.offsets[state.view][category] = { ...offset };
     ui.previewStage.style.setProperty(cfg.xVar, offset.x);
     ui.previewStage.style.setProperty(cfg.yVar, offset.y);
   }
@@ -270,8 +342,14 @@ function bindDragEvents(cfg) {
     const onPointerMove = (moveEvent) => {
       const nextX = initialX + (moveEvent.clientX - startX);
       const nextY = initialY + (moveEvent.clientY - startY);
-      ui.previewStage.style.setProperty(xVar, `${nextX}px`);
-      ui.previewStage.style.setProperty(yVar, `${nextY}px`);
+      const nextXText = `${nextX}px`;
+      const nextYText = `${nextY}px`;
+      ui.previewStage.style.setProperty(xVar, nextXText);
+      ui.previewStage.style.setProperty(yVar, nextYText);
+      const category = X_VAR_TO_CATEGORY[xVar];
+      if (category) {
+        state.offsets[state.view][category] = { x: nextXText, y: nextYText };
+      }
     };
 
     const onPointerUp = (upEvent) => {
@@ -299,6 +377,7 @@ function bindEvents() {
       state.view = view;
       ui.frontButton.classList.toggle("active", view === "front");
       ui.backButton.classList.toggle("active", view === "back");
+      applyOffsetsForView(view);
       await renderPreview();
     });
   }
