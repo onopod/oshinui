@@ -11,17 +11,20 @@
       <section class="panel preview-panel" aria-label="デザイン表示パネル">
         <div class="panel-header">
           <h1>推しぬいワッペンデザイナー</h1>
-          <div class="view-toggle" role="group" aria-label="表示向きの切り替え">
-            <button id="frontButton" class="active" data-view="front" type="button">前面</button>
-            <button id="backButton" data-view="back" type="button">背面</button>
+          <div class="header-actions">
+            <div class="view-toggle" role="group" aria-label="表示向きの切り替え">
+              <button id="frontButton" class="active" data-view="front" type="button">前面</button>
+              <button id="backButton" data-view="back" type="button">背面</button>
+            </div>
+            <button id="resetPositionButton" class="reset-button" type="button">位置をリセット</button>
           </div>
         </div>
 
         <div class="preview-stage" id="previewStage" data-view="front">
-          <img id="baseLayer" class="layer layer-base" alt="ベース画像" />
-          <img id="faceLayer" class="layer layer-face" alt="顔パーツ" />
-          <img id="wearLayer" class="layer layer-wear" alt="服パーツ" />
-          <img id="hairLayer" class="layer layer-hair" alt="髪パーツ" />
+          <img id="baseLayer" class="layer layer-base" alt="ベース画像" draggable="false" />
+          <img id="faceLayer" class="layer layer-face" alt="顔パーツ" draggable="false" />
+          <img id="wearLayer" class="layer layer-wear" alt="服パーツ" draggable="false" />
+          <img id="hairLayer" class="layer layer-hair" alt="髪パーツ" draggable="false" />
           <p id="previewMessage" class="preview-message"></p>
         </div>
       </section>
