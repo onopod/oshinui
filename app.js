@@ -1,9 +1,9 @@
-const XLSX_FILE_PATH = "files/推しぬいワッペンデザイナー.xlsx";
+const CSV_FILE_PATH = "files/50013020548.csv";
 
 const CATEGORY_MAP = {
-  "髪パーツ": "hair",
-  "顔パーツ": "face",
-  "服パーツ": "wear",
+  髪パーツ: "hair",
+  顔パーツ: "face",
+  服パーツ: "wear",
 };
 
 const SELECT_IDS = {
@@ -13,35 +13,17 @@ const SELECT_IDS = {
 };
 
 const IMAGE_EXT_CANDIDATES = [".png", ".PNG"];
-const IMAGE_BASE_DIR_CANDIDATES = ["images/output", "images"];
-const WHOLE_BODY_IMAGE_PATH = "images/output/wholebody.png";
+const WHOLE_BODY_IMAGE_PATH = "images/front/wholebody.png";
 const WHOLE_BODY_FALLBACK_PATHS = [
   WHOLE_BODY_IMAGE_PATH,
+  "images/front/wholebody.PNG",
+  "images/output/wholebody.png",
   "images/output/wholebody.PNG",
-  "images/wholebody.png",
-  "images/wholebody.PNG",
 ];
-const SLUG_FALLBACK_MAP = {
-  short_brown: ["short_bronw"],
-  tare_black: ["tare_brown"],
-};
 const LOCAL_FALLBACK_OPTIONS = {
-  hair: [
-    { name: "センターパート", color: "ブラック", slug: "centerpart_black" },
-    { name: "センターパート", color: "ブラウン", slug: "centerpart_brown" },
-    { name: "ショート", color: "ブラック", slug: "short_black" },
-    { name: "ショート", color: "ブラウン", slug: "short_brown" },
-  ],
-  face: [
-    { name: "じと目", color: "ブラック", slug: "jito_black" },
-    { name: "じと目", color: "ブラウン", slug: "jito_brown" },
-    { name: "たれ目", color: "グレー", slug: "tare_gray" },
-    { name: "たれ目", color: "ブラウン", slug: "tare_brown" },
-  ],
-  wear: [
-    { name: "アイドル衣装", color: "ブルー", slug: "idol_blue" },
-    { name: "アイドル衣装", color: "グリーン", slug: "idol_green" },
-  ],
+  hair: [{ name: "推しぬいワッペン 髪パーツ（サンプル）", sku: "SAMPLE-HAIR" }],
+  face: [{ name: "推しぬいワッペン 顔パーツ（サンプル）", sku: "SAMPLE-FACE" }],
+  wear: [{ name: "推しぬいワッペン 服パーツ（サンプル）", sku: "SAMPLE-WEAR" }],
 };
 const IS_FILE_PROTOCOL = window.location.protocol === "file:" || window.location.origin === "null";
 
@@ -103,59 +85,100 @@ function normalizeCategory(value) {
 }
 
 function toOptionLabel(item) {
-  return `${item.name} (${item.color})`;
+  return item.name;
 }
 
-function uniqueBySlug(items) {
+function uniqueBySku(items) {
   const seen = new Set();
   return items.filter((item) => {
-    if (seen.has(item.slug)) return false;
-    seen.add(item.slug);
+    if (seen.has(item.sku)) return false;
+    seen.add(item.sku);
     return true;
   });
 }
 
-function parseWorkbookRows(rows) {
-  const parsed = { hair: [], face: [], wear: [] };
-  for (let i = 1; i < rows.length; i += 1) {
-    const [rawCategory, rawName, rawColor, rawSlug] = rows[i];
-    const category = normalizeCategory(rawCategory);
-    const slug = String(rawSlug || "").trim();
-    if (!category || !slug) continue;
+function parseCsvLine(line) {
+  const cells = [];
+  let current = "";
+  let inQuotes = false;
 
-    parsed[category].push({
-      name: String(rawName || "名称不明").trim(),
-      color: String(rawColor || "色不明").trim(),
-      slug,
-    });
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+
+    if (char === '"') {
+      const next = line[i + 1];
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === "," && !inQuotes) {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += char;
   }
 
-  parsed.hair = uniqueBySlug(parsed.hair);
-  parsed.face = uniqueBySlug(parsed.face);
-  parsed.wear = uniqueBySlug(parsed.wear);
+  cells.push(current);
+  return cells;
+}
+
+function parseCsvRows(csvText) {
+  return csvText
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map((line) => parseCsvLine(line));
+}
+
+function parseCsvOptions(rows) {
+  if (!rows.length) return { hair: [], face: [], wear: [] };
+
+  const header = rows[0];
+  const skuIndex = header.indexOf("sku");
+  const nameIndex = header.indexOf("商品名");
+  if (skuIndex === -1 || nameIndex === -1) {
+    throw new Error("CSVヘッダーに sku / 商品名 列が見つかりません");
+  }
+
+  const parsed = { hair: [], face: [], wear: [] };
+  for (let i = 1; i < rows.length; i += 1) {
+    const row = rows[i];
+    const sku = String(row[skuIndex] || "").trim();
+    const productName = String(row[nameIndex] || "").trim();
+    const category = normalizeCategory(productName);
+    if (!category || !sku) continue;
+
+    parsed[category].push({ name: productName, sku });
+  }
+
+  parsed.hair = uniqueBySku(parsed.hair);
+  parsed.face = uniqueBySku(parsed.face);
+  parsed.wear = uniqueBySku(parsed.wear);
   return parsed;
 }
 
-async function loadOptionsFromXlsx() {
+async function loadOptionsFromCsv() {
   if (IS_FILE_PROTOCOL) {
     return LOCAL_FALLBACK_OPTIONS;
   }
 
   try {
-    const response = await fetch(XLSX_FILE_PATH);
+    const response = await fetch(CSV_FILE_PATH);
     if (!response.ok) {
-      throw new Error(`xlsxの取得に失敗: ${response.status}`);
+      throw new Error(`csvの取得に失敗: ${response.status}`);
     }
 
-    const arrayBuffer = await response.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: "array" });
-    const firstSheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[firstSheetName];
-    const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-
-    const parsed = parseWorkbookRows(rows);
+    const csvText = await response.text();
+    const rows = parseCsvRows(csvText);
+    const parsed = parseCsvOptions(rows);
     if (!parsed.hair.length || !parsed.face.length || !parsed.wear.length) {
-      throw new Error("xlsxから必要なパーツ情報を読み取れませんでした");
+      throw new Error("csvから必要なパーツ情報を読み取れませんでした");
     }
     return parsed;
   } catch (_error) {
@@ -164,17 +187,22 @@ async function loadOptionsFromXlsx() {
   }
 }
 
-function toPathCandidates(category, view, slug) {
-  const slugCandidates = getSlugCandidates(slug);
-  const candidates = [];
-  for (const baseDir of IMAGE_BASE_DIR_CANDIDATES) {
-    for (const candidateSlug of slugCandidates) {
-      for (const ext of IMAGE_EXT_CANDIDATES) {
-        candidates.push(`${baseDir}/${category}/${view}/${candidateSlug}${ext}`);
-      }
+function toPathCandidates(view, sku) {
+  return IMAGE_EXT_CANDIDATES.map((ext) => `images/${view}/${sku}${ext}`);
+}
+
+async function findFirstExistingPath(paths) {
+  for (const path of paths) {
+    if (IS_FILE_PROTOCOL) {
+      return path;
+    }
+
+    if (await loadImagePath(path)) {
+      return path;
     }
   }
-  return candidates;
+
+  return "";
 }
 
 function loadImagePath(path) {
@@ -190,37 +218,33 @@ function fillSelect(selectEl, items, category) {
   selectEl.innerHTML = "";
   for (const item of items) {
     const option = document.createElement("option");
-    option.value = item.slug;
+    option.value = item.sku;
     option.textContent = toOptionLabel(item);
     selectEl.appendChild(option);
   }
 
   const first = items[0];
   if (first) {
-    state.selected[category] = first.slug;
-    selectEl.value = first.slug;
+    state.selected[category] = first.sku;
+    selectEl.value = first.sku;
   }
 }
 
-function getSlugCandidates(slug) {
-  const fallback = SLUG_FALLBACK_MAP[slug] || [];
-  return [slug, ...fallback];
-}
-
-async function chooseExistingPath(category, view, slug) {
-  const cacheKey = `${category}:${view}:${slug}`;
+async function chooseExistingPath(category, view, sku) {
+  const cacheKey = `${category}:${view}:${sku}`;
   if (state.srcCache.has(cacheKey)) return state.srcCache.get(cacheKey);
 
-  const candidates = toPathCandidates(category, view, slug);
-  for (const path of candidates) {
-    if (IS_FILE_PROTOCOL) {
-      state.srcCache.set(cacheKey, path);
-      return path;
-    }
+  const src = await findFirstExistingPath(toPathCandidates(view, sku));
+  if (src) {
+    state.srcCache.set(cacheKey, src);
+    return src;
+  }
 
-    if (await loadImagePath(path)) {
-      state.srcCache.set(cacheKey, path);
-      return path;
+  if (view === "back") {
+    const frontFallbackSrc = await findFirstExistingPath(toPathCandidates("front", sku));
+    if (frontFallbackSrc) {
+      state.srcCache.set(cacheKey, frontFallbackSrc);
+      return frontFallbackSrc;
     }
   }
 
@@ -228,9 +252,9 @@ async function chooseExistingPath(category, view, slug) {
   return "";
 }
 
-async function setLayerImage(layerEl, category, slug) {
+async function setLayerImage(layerEl, category, sku) {
   const view = category === "face" ? "front" : state.view;
-  const src = await chooseExistingPath(category, view, slug);
+  const src = await chooseExistingPath(category, view, sku);
 
   if (src) {
     layerEl.src = src;
@@ -408,7 +432,7 @@ function bindEvents() {
 
 async function init() {
   try {
-    state.options = await loadOptionsFromXlsx();
+    state.options = await loadOptionsFromCsv();
 
     fillSelect(ui.hairSelect, state.options.hair, "hair");
     fillSelect(ui.faceSelect, state.options.face, "face");
